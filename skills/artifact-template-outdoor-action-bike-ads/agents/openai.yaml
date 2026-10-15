@@ -1,0 +1,7 @@
+interface:
+  display_name: "Outdoor Action Bike Ads"
+  short_description: "Create images with the Outdoor Action Bike Ads template"
+  icon_large: "./assets/preview.png"
+  default_prompt: "Use $artifact-template-outdoor-action-bike-ads to create an image with this template."
+policy:
+  allow_implicit_invocation: true

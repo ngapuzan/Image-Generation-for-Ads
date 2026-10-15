@@ -1,0 +1,38 @@
+import {test,expect} from '@playwright/test';
+test('edit a layer, undo, save locally, and export a real PNG',async({page})=>{
+  const errors=[];page.on('pageerror',e=>errors.push(e.message));
+  let generationCalls=0;page.on('request',r=>{if(r.url().endsWith('/api/generate'))generationCalls++;});
+  await page.goto('/');
+  await expect(page.getByLabel('Ad design canvas')).toBeVisible();
+  await expect(page.getByText('Saved on this device',{exact:true})).toBeVisible();
+  await expect.poll(()=>page.locator('canvas').evaluate(c=>c.width)).toBe(1080);
+  await page.getByLabel('Font family').selectOption('Georgia');
+  await page.getByLabel('Text content').fill('CHASE THE TRAIL');
+  await page.getByRole('button',{name:'Undo',exact:true}).click();
+  await expect(page.getByLabel('Text content')).toHaveValue('BEYOND\nTHE ROAD.');
+  await page.getByRole('button',{name:'Redo',exact:true}).click();
+  await expect(page.getByLabel('Text content')).toHaveValue('CHASE THE TRAIL');
+  await page.getByRole('button',{name:'Adjust',exact:true}).click();
+  await page.getByLabel('Brightness').fill('120');
+  await page.getByRole('button',{name:'Export ad'}).click();
+  const downloadPromise=page.waitForEvent('download');
+  await page.getByRole('button',{name:'Download ad',exact:true}).click();
+  const download=await downloadPromise;
+  expect(download.suggestedFilename()).toMatch(/\.png$/);
+  const stream=await download.createReadStream();const parts=[];for await(const part of stream)parts.push(part);const bytes=Buffer.concat(parts);
+  expect(bytes.subarray(0,8).toString('hex')).toBe('89504e470d0a1a0a');
+  expect(bytes.readUInt32BE(16)).toBe(1080);expect(bytes.readUInt32BE(20)).toBe(1350);
+  await expect(page.getByText('Saved on this device',{exact:true})).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('Saved on this device',{exact:true})).toBeVisible();
+  await page.getByRole('button',{name:'Layers',exact:true}).click();
+  await page.getByRole('button',{name:'Headline',exact:true}).click();
+  await expect(page.getByLabel('Text content')).toHaveValue('CHASE THE TRAIL');
+  await expect(page.getByLabel('Font family')).toHaveValue('Georgia');
+  expect(generationCalls).toBe(0);expect(errors).toEqual([]);
+});
+test('API rejects invalid input and reports missing generation configuration',async({request})=>{
+  const status=await request.get('/api/status');expect(status.ok()).toBeTruthy();expect((await status.json()).generationConfigured).toBe(false);
+  const invalid=await request.post('/api/generate',{data:{}});expect(invalid.status()).toBe(400);
+  const missing=await request.post('/api/generate',{data:{preset:'dark',reference:'data:image/png;base64,aGVsbG8=',prompt:'',mode:'scene'}});expect(missing.status()).toBe(503);expect((await missing.json()).error).toContain('IMAGE_API_KEY');
+});
