@@ -1,0 +1,8 @@
+interface:
+  display_name: "Dark Bike Ads"
+  short_description: "Create images with the Dark Bike Ads template"
+  icon_small: "./assets/preview.png"
+  icon_large: "./assets/preview.png"
+  default_prompt: "Create an image using the Dark Bike Ads template."
+policy:
+  allow_implicit_invocation: true

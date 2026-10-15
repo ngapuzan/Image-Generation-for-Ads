@@ -218,3 +218,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Ride Studio
+node_modules/
+dist/
+test-results/
+playwright-report/
+.cache/
+.env
+.env.*
+!.env.example
